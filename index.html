@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b1118" />
+    <title>Llama Chat · Conversa local</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230b1118'/%3E%3Cpath d='M17 18h30v8H25v8h17v8H25v12h-8z' fill='%236ee7b7'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+      :root { color-scheme: dark; --bg:#0b1118; --panel:#111a23; --panel-2:#17232e; --line:#263542; --text:#edf5f2; --muted:#90a4ad; --accent:#6ee7b7; --accent-2:#a7f3d0; --danger:#fb7185; }
+      * { box-sizing:border-box; }
+      body { margin:0; min-width:320px; background:radial-gradient(circle at 85% 8%, #173329 0, transparent 28rem), var(--bg); color:var(--text); font-family:Manrope,system-ui,sans-serif; }
+      button,textarea,input,select { font:inherit; }
+      button { cursor:pointer; }
+      .app { min-height:100vh; display:grid; grid-template-columns:290px 1fr; }
+      aside { border-right:1px solid var(--line); padding:25px 20px; display:flex; flex-direction:column; gap:28px; background:rgba(9,15,21,.78); }
+      .brand { display:flex; align-items:center; gap:12px; }
+      .mark { width:38px; height:38px; border-radius:12px; display:grid; place-items:center; background:var(--accent); color:#0b1118; font-weight:800; font-size:20px; }
+      .brand strong { display:block; font-size:15px; letter-spacing:-.02em; }
+      .brand span { color:var(--muted); font-size:12px; }
+      .side-label { color:#6f858f; text-transform:uppercase; letter-spacing:.13em; font:500 10px 'DM Mono',monospace; margin-bottom:10px; }
+      .settings { display:flex; flex-direction:column; gap:18px; }
+      label { color:var(--muted); font-size:12px; font-weight:600; display:block; margin-bottom:7px; }
+      input,select,textarea { width:100%; border:1px solid var(--line); color:var(--text); background:#0d161f; border-radius:10px; outline:none; transition:.2s border-color,.2s box-shadow; }
+      input,select { padding:11px 12px; }
+      textarea:focus,input:focus,select:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(110,231,183,.11); }
+      .prompt { min-height:160px; resize:vertical; line-height:1.55; padding:12px; font-size:13px; }
+      .save { width:100%; border:1px solid #305849; background:#15372c; color:var(--accent-2); border-radius:9px; padding:10px 12px; font-weight:700; }
+      .save:hover { background:#1d4839; }
+      .note { margin-top:auto; border-top:1px solid var(--line); padding-top:16px; color:#71858d; line-height:1.6; font-size:11px; }
+      .note code { font-family:'DM Mono',monospace; color:#9bc7b5; }
+      main { min-width:0; height:100vh; display:flex; flex-direction:column; }
+      header { padding:25px clamp(20px, 5vw, 72px) 19px; display:flex; align-items:flex-start; justify-content:space-between; gap:18px; }
+      .eyebrow { color:var(--accent); font:500 11px 'DM Mono',monospace; letter-spacing:.12em; text-transform:uppercase; margin:0 0 8px; }
+      h1 { font-size:clamp(24px, 3vw, 35px); line-height:1.1; margin:0; letter-spacing:-.05em; }
+      .subtitle { color:var(--muted); margin:9px 0 0; font-size:13px; }
+      .status { display:flex; align-items:center; gap:8px; color:#a9babf; font-size:12px; white-space:nowrap; padding-top:4px; }
+      .dot { width:8px; height:8px; border-radius:50%; background:#fbbf24; box-shadow:0 0 0 4px rgba(251,191,36,.1); }
+      .dot.online { background:var(--accent); box-shadow:0 0 0 4px rgba(110,231,183,.1); }
+      .dot.error { background:var(--danger); box-shadow:0 0 0 4px rgba(251,113,133,.1); }
+      .chat { flex:1; min-height:0; overflow:auto; padding:10px clamp(20px, 5vw, 72px) 24px; }
+      .welcome { max-width:680px; margin:clamp(35px,10vh,110px) auto 0; text-align:center; }
+      .welcome .halo { display:inline-grid; place-items:center; width:58px; height:58px; border:1px solid #315547; border-radius:18px; background:#143126; color:var(--accent); font-size:25px; margin-bottom:18px; }
+      .welcome h2 { font-size:22px; margin:0 0 9px; letter-spacing:-.04em; }
+      .welcome p { margin:0 auto; color:var(--muted); font-size:14px; line-height:1.65; max-width:530px; }
+      .messages { max-width:840px; margin:0 auto; display:flex; flex-direction:column; gap:16px; }
+      .message { display:flex; gap:10px; align-items:flex-start; animation:rise .25s ease both; }
+      .message.user { flex-direction:row-reverse; }
+      .avatar { flex:0 0 30px; width:30px; height:30px; display:grid; place-items:center; border-radius:10px; color:#08110d; background:var(--accent); font-size:11px; font-weight:800; }
+      .message.user .avatar { background:#354957; color:#dce8eb; }
+      .bubble { max-width:min(76%, 680px); border:1px solid var(--line); background:var(--panel); border-radius:4px 14px 14px 14px; padding:12px 15px; line-height:1.6; font-size:14px; white-space:pre-wrap; overflow-wrap:anywhere; }
+      .message.user .bubble { background:#19362e; border-color:#2b5849; border-radius:14px 4px 14px 14px; }
+      .meta { color:#71858d; font:11px 'DM Mono',monospace; margin-top:6px; }
+      .composer-wrap { padding:0 clamp(20px, 5vw, 72px) 25px; }
+      .composer { max-width:840px; margin:0 auto; display:flex; align-items:flex-end; gap:10px; padding:10px; border:1px solid var(--line); border-radius:16px; background:rgba(17,26,35,.92); box-shadow:0 18px 42px rgba(0,0,0,.2); }
+      .composer textarea { border:0; background:transparent; resize:none; min-height:42px; max-height:130px; padding:8px 9px; line-height:1.5; }
+      .composer textarea:focus { box-shadow:none; }
+      .send { flex:0 0 auto; width:42px; height:42px; border:0; border-radius:11px; background:var(--accent); color:#07110d; font-size:18px; font-weight:800; }
+      .send:disabled { opacity:.4; cursor:not-allowed; }
+      .hint { max-width:840px; margin:9px auto 0; color:#667981; font-size:11px; text-align:center; }
+      .typing { display:flex; gap:4px; align-items:center; }
+      .typing i { width:5px; height:5px; border-radius:50%; background:var(--accent); animation:blink 1s infinite; }
+      .typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+      @keyframes rise { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:none } } @keyframes blink { 0%,80%,100%{opacity:.25}40%{opacity:1} }
+      @media (max-width:760px) { .app { display:block; } aside { border-right:0; border-bottom:1px solid var(--line); padding:16px 18px; gap:16px; } .settings { display:grid; grid-template-columns:1fr 1fr; gap:12px; } .settings .prompt-field { grid-column:1/-1; } .prompt { min-height:100px; } .note { display:none; } header { padding:20px 18px 14px; } .status { font-size:0; } .status .dot { margin-top:4px; } main { height:auto; min-height:calc(100vh - 222px); } .chat { min-height:52vh; } .bubble { max-width:82%; } }
+      @media (max-width:460px) { .settings { display:flex; } h1 { font-size:26px; } .subtitle { font-size:12px; } }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside>
+        <div class="brand"><div class="mark">L</div><div><strong>Llama Chat</strong><span>conversa privada</span></div></div>
+        <section class="settings" aria-label="Configurações do agente">
+          <div><div class="side-label">Conexão</div><label for="endpoint">Endpoint do Ollama</label><input id="endpoint" value="http://165.227.113.169:11434/api/chat" spellcheck="false" /></div>
+          <div><label for="model">Modelo</label><input id="model" value="llama3.2:1b" spellcheck="false" /></div>
+          <div class="prompt-field"><label for="systemPrompt">Prompt do agente</label><textarea id="systemPrompt" class="prompt">Você é um assistente útil, claro e direto. Responda sempre em português do Brasil. Se não souber algo, diga que não sabe.</textarea><button class="save" id="savePrompt" type="button">Salvar prompt</button></div>
+        </section>
+        <div class="note">O prompt é enviado como mensagem <code>system</code> em cada conversa. As configurações ficam salvas apenas neste navegador.</div>
+      </aside>
+      <main>
+        <header><div><p class="eyebrow">Llama · sessão local</p><h1>Converse com seu agente</h1><p class="subtitle">Um espaço simples para testar ideias com seu modelo.</p></div><div class="status" aria-live="polite"><span class="dot" id="statusDot"></span><span id="statusText">pronto para conversar</span></div></header>
+        <section class="chat" id="chat" aria-live="polite"><div class="welcome" id="welcome"><div class="halo">✦</div><h2>Por onde começamos?</h2><p>Envie uma mensagem para iniciar. Você pode ajustar o comportamento do agente no painel de configuração.</p></div><div class="messages" id="messages"></div></section>
+        <div class="composer-wrap"><form class="composer" id="chatForm"><textarea id="messageInput" rows="1" placeholder="Escreva sua mensagem…" aria-label="Mensagem para o agente"></textarea><button class="send" id="sendButton" type="submit" aria-label="Enviar mensagem">↑</button></form><div class="hint">Enter envia · Shift + Enter cria uma nova linha</div></div>
+      </main>
+    </div>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const state = { messages: [], loading: false };
+      const savedPrompt = localStorage.getItem('llama-chat-prompt');
+      if (savedPrompt) $('systemPrompt').value = savedPrompt;
+      for (const key of ['endpoint','model']) { const value = localStorage.getItem('llama-chat-' + key); if (value) $(key).value = value; }
+      $('savePrompt').addEventListener('click', () => { localStorage.setItem('llama-chat-prompt', $('systemPrompt').value.trim()); localStorage.setItem('llama-chat-endpoint', $('endpoint').value.trim()); localStorage.setItem('llama-chat-model', $('model').value.trim()); setStatus('configuração salva', 'online'); setTimeout(() => setStatus('pronto para conversar', ''), 1600); });
+      function setStatus(text, kind='') { $('statusText').textContent = text; $('statusDot').className = 'dot ' + kind; }
+      function addMessage(role, content, temporary=false) { const item = document.createElement('div'); item.className = 'message ' + role; if (temporary) item.id = 'typing'; const avatar = document.createElement('div'); avatar.className = 'avatar'; avatar.textContent = role === 'user' ? 'VOCÊ' : 'L'; const body = document.createElement('div'); const bubble = document.createElement('div'); bubble.className = 'bubble'; if (temporary) { const typing = document.createElement('span'); typing.className = 'typing'; typing.innerHTML = '<i></i><i></i><i></i>'; bubble.appendChild(typing); } else bubble.textContent = content; body.appendChild(bubble); if (!temporary) { const meta = document.createElement('div'); meta.className = 'meta'; meta.textContent = role === 'user' ? 'agora' : 'llama'; body.appendChild(meta); } item.append(avatar, body); $('messages').appendChild(item); $('chat').scrollTop = $('chat').scrollHeight; return item; }
+      async function sendMessage(text) { state.loading = true; $('sendButton').disabled = true; $('messageInput').disabled = true; $('welcome').style.display = 'none'; state.messages.push({ role:'user', content:text }); addMessage('user', text); addMessage('assistant', '', true); setStatus('agente pensando…'); try { const response = await fetch($('endpoint').value.trim(), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ model:$('model').value.trim(), messages:[{role:'system',content:$('systemPrompt').value.trim()}, ...state.messages], stream:false }) }); if (!response.ok) throw new Error('O servidor respondeu com HTTP ' + response.status); const data = await response.json(); const reply = data.message?.content || data.response || 'O agente não retornou conteúdo.'; $('typing')?.remove(); state.messages.push({role:'assistant',content:reply}); addMessage('assistant', reply); setStatus('conectado', 'online'); } catch (error) { $('typing')?.remove(); state.messages.pop(); const message = error.name === 'TypeError' ? 'Não foi possível acessar o Ollama. Verifique se o endpoint está online e se permite requisições do navegador (CORS).' : error.message; addMessage('assistant', message); setStatus('erro de conexão', 'error'); } finally { state.loading = false; $('sendButton').disabled = false; $('messageInput').disabled = false; $('messageInput').focus(); } }
+      $('chatForm').addEventListener('submit', (event) => { event.preventDefault(); const text = $('messageInput').value.trim(); if (text && !state.loading) { $('messageInput').value = ''; $('messageInput').style.height = 'auto'; sendMessage(text); } });
+      $('messageInput').addEventListener('keydown', (event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); $('chatForm').requestSubmit(); } });
+      $('messageInput').addEventListener('input', () => { $('messageInput').style.height = 'auto'; $('messageInput').style.height = Math.min($('messageInput').scrollHeight, 130) + 'px'; });
+    </script>
+  </body>
+</html>
