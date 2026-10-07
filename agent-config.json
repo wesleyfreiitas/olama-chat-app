@@ -1,0 +1,5 @@
+{
+  "prompt": "Responda em português.",
+  "training": "A Olama atende de segunda a sexta, das 9h às 18h.",
+  "model": "llama3.2:1b"
+}

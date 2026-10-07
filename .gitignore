@@ -1,0 +1,5 @@
+llama-chat.sqlite
+llama-chat.sqlite-shm
+llama-chat.sqlite-wal
+.env
+.openai/
