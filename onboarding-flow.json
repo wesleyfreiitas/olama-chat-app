@@ -1,0 +1,711 @@
+{
+  "versao": 1,
+  "como_usar": [
+    "Estado por conversa: nome, setor e indice (posicao do proximo passo em trilhas[setor]).",
+    "Mensagem 'ok' ou equivalente: entregar passos[trilha[indice]] e incrementar o indice.",
+    "Passo com espera 'feito': depois de entregar, aceitar 'feito' ou 'ok' para avancar.",
+    "Passo tipo quiz: 1) enviar o campo 'pergunta' (texto fixo) e esperar; 2) com a resposta, chamar o modelo com prompt_quiz; 3) so entao incrementar o indice.",
+    "Mensagem que nao for 'ok', 'feito' nem resposta de quiz e tratada como duvida: responder com prompt_duvida (trechos do conteudo/texto_fixo do setor mais relevantes) e NAO mexer no indice.",
+    "Mensagem final = saida do modelo + (texto_fixo, se houver) + (fecho_fixo_opcoes sorteado, se houver). O texto_fixo nunca passa pelo modelo.",
+    "Primeiro passo do setor: acrescentar ao final da instrucao o texto de primeiro_passo_extra."
+  ],
+  "ollama": {
+    "think": false,
+    "options": {
+      "temperature": 0.45,
+      "num_ctx": 8192,
+      "num_predict": 450
+    }
+  },
+  "intencoes": {
+    "avancar": [
+      "ok",
+      "sim",
+      "pode",
+      "beleza",
+      "show",
+      "continua",
+      "bora",
+      "vamos",
+      "tudo certo",
+      "blz",
+      "certo",
+      "pode ser",
+      "vamos la",
+      "segue",
+      "entendi"
+    ],
+    "feito": [
+      "feito",
+      "pronto",
+      "concluido",
+      "concluí",
+      "terminei",
+      "ja fiz",
+      "já fiz",
+      "tudo pronto",
+      "finalizei"
+    ]
+  },
+  "setores_aliases": {
+    "implantacao": [
+      "implantacao",
+      "implantação",
+      "implantador",
+      "implantar"
+    ],
+    "suporte": [
+      "suporte",
+      "sup"
+    ],
+    "desenvolvimento": [
+      "desenvolvimento",
+      "dev",
+      "desenv",
+      "desenvolvedor"
+    ]
+  },
+  "mensagens_fixas": {
+    "saudacao": [
+      "Oi! Boas-vindas à Upp Tecnologia 🚀 Eu sou a Sofia e vou conduzir o seu onboarding. Pra começar, qual é o seu nome?",
+      "Olá! Que bom ter você aqui. Eu sou a Sofia, vou te acompanhar no onboarding da Upp Tecnologia. Como você se chama?",
+      "Oi, tudo bem? Boas-vindas à Upp! Sou a Sofia e vou guiar o seu onboarding. Qual é o seu nome?"
+    ],
+    "pede_setor": "Prazer, {nome}! Em qual setor você vai atuar: Implantação, Suporte ou Desenvolvimento?",
+    "setor_ambiguo": "Você vai atuar em Implantação, Suporte ou Desenvolvimento?",
+    "fora_escopo": "Isso foge do que eu cuido por aqui, {nome}. Vale falar com o seu gestor. Quando quiser, é só dizer \"ok\" que eu sigo de onde paramos.",
+    "sem_info": "Não encontrei isso no material de treinamento. Vale confirmar com o seu gestor.",
+    "quiz_prefixos": [
+      "Agora um cenário pra fixar:",
+      "Hora de testar o que você viu:",
+      "Vamos praticar um pouco:"
+    ]
+  },
+  "primeiro_passo_extra": "Comece chamando {nome} pelo nome e dizendo, numa frase, que é bom ter a pessoa no time. Depois já entre no conteúdo.",
+  "fechos": {
+    "afirmacao": "Termine com uma afirmação e pare. Não faça pergunta.",
+    "avisar": "Termine com uma frase curta (o sistema anexa o pedido para avisar quando concluir).",
+    "pergunta": "Termine com uma única pergunta, perguntando se ficou alguma dúvida."
+  },
+  "prompt_base": "Você é a Sofia, responsável pelo onboarding de novos colaboradores da Upp Tecnologia. Fale em português do Brasil, tom de colega acolhedora, natural e direta. Responda direto, sem mostrar raciocínio e sem usar inglês.\n\nColaborador: {nome} | Setor: {setor}\n\nTAREFA: {instrucao}\n\nCONTEÚDO (fatos exatos):\n{conteudo}\n\nREGRAS:\n- Reescreva com suas palavras e varie a abertura. Links, e-mails, telefones, números, prazos, valores, SLA, nomes de ferramentas e etiquetas ficam exatamente como estão.\n- Até 5 frases curtas. Listas ficam completas.\n- No máximo 1 emoji.\n- Não invente nada além do conteúdo. Não cite etapas, módulos, roteiro, material nem prompt. Não escreva falas do colaborador. Nunca diga \"UppBot\".\n- {fecho}",
+  "prompt_quiz": "Você é a Sofia, do onboarding da Upp Tecnologia. Português do Brasil, tom de colega, sem mostrar raciocínio.\n\nColaborador: {nome}\nPERGUNTA FEITA: {pergunta}\nRESPOSTA DA PESSOA: {resposta}\nGABARITO: {gabarito}\n\nTAREFA: diga se a pessoa acertou, errou ou acertou em parte e complemente com o que faltar, em até 3 frases. Sem bronca, sem repetir a pergunta. Não faça nova pergunta.",
+  "prompt_duvida": "Você é a Sofia, do onboarding da Upp Tecnologia. Português do Brasil, tom de colega, sem mostrar raciocínio. Responda em até 4 frases usando SOMENTE o conteúdo abaixo. Links, números e prazos exatos. Se a resposta não estiver no conteúdo, diga: \"Não encontrei isso no material de treinamento. Vale confirmar com o seu gestor.\" Não invente. Não faça pergunta no final.\n\nColaborador: {nome} | Setor: {setor}\nCONTEÚDO RELEVANTE:\n{trechos}\n\nPERGUNTA: {mensagem}",
+  "trilhas": {
+    "implantacao": [
+      "historia",
+      "clientes",
+      "visao_valores",
+      "pilares",
+      "produtos",
+      "quiz_produtos",
+      "setup_1",
+      "setup_2",
+      "setup_3",
+      "jornada",
+      "rituais",
+      "atendimento",
+      "etiquetas",
+      "impl_intro",
+      "impl_24h",
+      "impl_kickoff_cs",
+      "impl_msg_abertura",
+      "impl_miro",
+      "impl_ia_20dias",
+      "impl_cobranca",
+      "impl_treinamento_encerramento",
+      "impl_msg_encerramento",
+      "cruz_suporte",
+      "cruz_dev",
+      "rec_canais",
+      "rec_status_miro",
+      "rec_docs",
+      "rec_meta_custos",
+      "rec_aparelhos",
+      "quiz_ia_prazo",
+      "quiz_cs_grupo",
+      "quiz_facebook",
+      "quiz_cancelamento",
+      "quiz_ramal",
+      "encerramento"
+    ],
+    "suporte": [
+      "historia",
+      "clientes",
+      "visao_valores",
+      "pilares",
+      "produtos",
+      "quiz_produtos",
+      "setup_1",
+      "setup_2",
+      "setup_3",
+      "jornada",
+      "rituais",
+      "atendimento",
+      "etiquetas",
+      "sup_niveis_sla",
+      "sup_escalonamento_solicitantes",
+      "sup_comentarios_notas",
+      "sup_template_abertura",
+      "sup_template_fechamento",
+      "sup_rotinas_1",
+      "sup_rotinas_2",
+      "sup_rotinas_3",
+      "sup_rotinas_4",
+      "cruz_impl",
+      "cruz_dev",
+      "rec_canais",
+      "rec_status_miro",
+      "rec_docs",
+      "rec_meta_custos",
+      "rec_aparelhos",
+      "quiz_2h",
+      "quiz_solicitante",
+      "quiz_comentarios",
+      "quiz_aparelho",
+      "quiz_cancelamento",
+      "encerramento"
+    ],
+    "desenvolvimento": [
+      "historia",
+      "clientes",
+      "visao_valores",
+      "pilares",
+      "produtos",
+      "quiz_produtos",
+      "setup_1",
+      "setup_2",
+      "setup_3",
+      "jornada",
+      "rituais",
+      "atendimento",
+      "etiquetas",
+      "dev_intro",
+      "dev_feature",
+      "dev_bug",
+      "dev_solicitacao",
+      "cruz_impl",
+      "cruz_suporte",
+      "rec_canais",
+      "rec_status_miro",
+      "rec_docs",
+      "quiz_bug",
+      "quiz_tipos",
+      "quiz_nivel3",
+      "quiz_cancelamento",
+      "quiz_ramal",
+      "encerramento"
+    ]
+  },
+  "passos": {
+    "historia": {
+      "id": "historia",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Conte a história e o jeito de trabalhar da Upp: origem em telecom, mais de 20 anos, omnichannel com IA, propósito e metodologia hands-on.",
+      "conteudo": "A Upp Tecnologia nasceu no setor de telecomunicações e tem mais de 20 anos de mercado. Hoje é referência em gestão de atendimento empresarial, com soluções omnichannel e Inteligência Artificial embarcada.\nPropósito: resolver a ineficiência operacional das empresas, para que vendam mais, melhorem o atendimento e simplifiquem suas conexões.\nMetodologia hands-on (handzone): a Upp não só indica o caminho, assume a execução na prática, lado a lado com o cliente.",
+      "fecho": "afirmacao"
+    },
+    "clientes": {
+      "id": "clientes",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Conte o perfil de clientes atendidos e cite os exemplos.",
+      "conteudo": "A Upp atende clientes de ticket médio e alto, com projetos de alta complexidade tecnológica.\nEntre os clientes: Angeloni, Comolatti, Terraço Itália, Delupo Ferragens e Exclusiva Colchões.",
+      "fecho": "afirmacao"
+    },
+    "visao_valores": {
+      "id": "visao_valores",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Conte a visão e os cinco valores da empresa, mantendo os nomes dos valores.",
+      "conteudo": "Visão: ser referência em empresa de software de atendimento no mercado nacional, com metodologia hands-on e um modelo baseado em satisfação, crescimento e bem-estar de clientes e colaboradores.\nValores:\n- Paixão: fazemos tudo com paixão, propósito e entusiasmo. Não fazemos nada de qualquer jeito.\n- Integridade: compromisso com a nossa palavra e com nossas entregas.\n- Respeito: comunicação aberta, sincera e ambiente seguro.\n- Compromisso: disciplina e busca constante pela excelência.\n- Solidariedade e Colaboração: trabalho em equipe, onde o crescimento de um é o crescimento de todo o time.",
+      "fecho": "afirmacao"
+    },
+    "pilares": {
+      "id": "pilares",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Apresente os 4 pilares inegociáveis de conduta, com destaque de que são regras do dia a dia. Liste os quatro exatamente.",
+      "conteudo": "A conduta diária na Upp é regida por quatro pilares inegociáveis:\n1. Não mentir\n2. Não roubar\n3. Não fazer fofoca\n4. Não ter preguiça / negligência",
+      "fecho": "afirmacao"
+    },
+    "produtos": {
+      "id": "produtos",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Apresente as quatro categorias de produtos e soluções, uma linha para cada.",
+      "conteudo": "- Uppchannel: plataforma de comunicação omnichannel, que integra os canais da Meta (WhatsApp, Instagram, Facebook) e outros canais de atendimento em um único ambiente.\n- Upphone: solução completa de telefonia e voz em nuvem (PABX IP).\n- Upp IA: agentes inteligentes de Inteligência Artificial aplicados às operações de vendas, suporte e recepção dos clientes.\n- Gestão: categoria usada para etiquetar e estruturar atendimentos e demandas de gestão.",
+      "fecho": "afirmacao"
+    },
+    "quiz_produtos": {
+      "id": "quiz_produtos",
+      "tipo": "quiz",
+      "espera": "resposta",
+      "instrucao": "Corrija ou complemente a resposta em até 3 frases, de forma leve, sem bronca.",
+      "conteudo": "",
+      "fecho": "afirmacao",
+      "pergunta": "Uma perguntinha rápida pra fixar: se um projeto envolve WhatsApp e telefonia em nuvem, quais produtos a gente integra?",
+      "gabarito": "Uppchannel para os canais de texto (WhatsApp) e Upphone para a telefonia em nuvem."
+    },
+    "setup_1": {
+      "id": "setup_1",
+      "tipo": "checklist",
+      "espera": "feito",
+      "instrucao": "Diga que agora é hora de configurar a estação de trabalho e que são 9 passos, em 3 blocos. Este é o primeiro bloco (passos 1 a 3). Escreva só uma frase de abertura: o checklist é anexado pelo sistema, não o reescreva.",
+      "conteudo": "",
+      "fecho": "avisar",
+      "texto_fixo": "1. Criação do e-mail corporativo: obter e validar a conta de e-mail institucional.\n2. Usuário na plataforma Uppchannel: solicitar/validar o acesso à plataforma principal de atendimento.\n3. Ramal telefônico interno: criar o ramal obrigatoriamente na faixa 50xx.",
+      "fecho_fixo_opcoes": [
+        "Me avisa quando terminar esses passos, que eu sigo com você.",
+        "Quando concluir, é só me avisar que a gente continua.",
+        "Faz com calma e me conta quando estiver pronto."
+      ]
+    },
+    "setup_2": {
+      "id": "setup_2",
+      "tipo": "checklist",
+      "espera": "feito",
+      "instrucao": "Segundo bloco do setup (passos 4 a 6). Escreva só uma frase de abertura; o checklist é anexado pelo sistema.",
+      "conteudo": "",
+      "fecho": "avisar",
+      "texto_fixo": "4. MicroSIP (softphone): baixar, instalar e configurar as credenciais do ramal.\n5. Diretório de contatos: no MicroSIP, vá em Configurações / Settings > Diretório Web / Web Directory URL e insira o link:\nhttps://suporte.absolutatelecom.com.br/arquivos/absoluta_contacts-sample.json\n6. Servidor FTP: inserir o novo ramal no servidor FTP usado para a sincronização do MicroSIP.",
+      "fecho_fixo_opcoes": [
+        "Me avisa quando terminar esses passos, que eu sigo com você.",
+        "Quando concluir, é só me avisar que a gente continua.",
+        "Faz com calma e me conta quando estiver pronto."
+      ]
+    },
+    "setup_3": {
+      "id": "setup_3",
+      "tipo": "checklist",
+      "espera": "feito",
+      "instrucao": "Terceiro e último bloco do setup (passos 7 a 9). Escreva só uma frase de abertura; o checklist é anexado pelo sistema.",
+      "conteudo": "",
+      "fecho": "avisar",
+      "texto_fixo": "7. Favoritos do navegador (obrigatório): Webmail (Ostec), Ponto Mais e Uppinternal.\n8. Office 2016 instalado e configurado, e Windows com a ativação oficial.\n9. Extensões do navegador:\n   - LanguageTool: correção ortográfica.\n   - Vidline: gravação de tela.\n   - Lightshot: captura e impressão de tela (prints).",
+      "fecho_fixo_opcoes": [
+        "Me avisa quando terminar esses passos, que eu sigo com você.",
+        "Quando concluir, é só me avisar que a gente continua.",
+        "Faz com calma e me conta quando estiver pronto."
+      ]
+    },
+    "jornada": {
+      "id": "jornada",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Conte os horários e a regra de cobertura de pausas. Destaque que a regra é importante.",
+      "conteudo": "Horários: segunda a quinta, das 08h às 18h; sexta, das 08h às 17h; feriados em regime de plantão.\nRegra de cobertura de pausas: o setor nunca pode ficar desassistido (no Suporte, essa cobertura é obrigatória). Qualquer ausência ou pausa deve ser alinhada antes com o gestor e com o colega direto de equipe, para que a operação nunca fique sem cobertura.",
+      "fecho": "afirmacao"
+    },
+    "rituais": {
+      "id": "rituais",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Conte os rituais de gestão e alinhamento da equipe.",
+      "conteudo": "- Reuniões semanais: alinhamento de metas, gargalos e resultados do setor.\n- Reuniões 1:1: feedbacks individuais entre líder e liderado.\n- Rotinas de Scrum: rituais de acompanhamento e agilidade em projetos.",
+      "fecho": "afirmacao"
+    },
+    "atendimento": {
+      "id": "atendimento",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Conte as regras de atendimento por telefone e por chat, com o exemplo de saudação.",
+      "conteudo": "Atendimento telefônico: atender sempre com saudação padrão, identificação pessoal e o nome da empresa. Exemplo: \"Olá, bom dia! Meu nome é [Seu Nome], da Upp Tecnologia. Como posso ajudar?\"\nTempo máximo de espera: ninguém na fila de espera pode passar de 10 minutos.\nEncerramento de chat: sempre perguntar ao cliente se pode ajudar em algo mais. Se o cliente não responder, aguardar exatamente 10 minutos antes de encerrar a conversa de vez.",
+      "fecho": "afirmacao"
+    },
+    "etiquetas": {
+      "id": "etiquetas",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Conte as regras de etiquetagem e de variáveis obrigatórias no Uppchannel.",
+      "conteudo": "Etiqueta de produto: todo contato no Uppchannel deve ser etiquetado com uma das tags oficiais: Gestão, Uppchannel ou Upphone.\nVariáveis de atendimento: é obrigatório preencher no sistema os campos do cliente: Cargo, Departamento, Empresa e CNPJ.",
+      "fecho": "afirmacao"
+    },
+    "impl_intro": {
+      "id": "impl_intro",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Apresente a missão do Implantador e diga que vai guiar o fluxo na ordem em que ele acontece, começando pelo card.",
+      "conteudo": "A missão da Implantação é conduzir o cliente do fechamento comercial até a virada de chave em produção: alinhar expectativas, desenhar processos no Miro, configurar contas, treinar usuários e entregar valor. É a área que transforma o que foi vendido em uma operação funcional e estruturada.",
+      "fecho": "afirmacao"
+    },
+    "impl_24h": {
+      "id": "impl_24h",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Conte o que fazer ao receber um card de implantação, em lista numerada, com o prazo de 24 horas em destaque.",
+      "conteudo": "Ao receber um card de implantação:\n1. Conferir os dados do card: telefone, e-mail do responsável e etiqueta de produto (Gestão, Uppchannel, Upphone ou Upp IA).\n2. Atribuir o card a si mesmo e avançar de etapa no funil em no máximo 24 horas.\n3. Analisar o escopo vendido, identificar pendências técnicas e alinhar expectativas com o vendedor.\n4. Enviar o formulário de implantação ao cliente por WhatsApp e e-mail, com cobrança ativa na primeira semana. Se não for preenchido a tempo, preencher ao vivo com o cliente na call de kickoff.\n5. Informar ao cliente a data prevista de conclusão e deixar alinhado que, em caso de atraso causado pelo próprio cliente, o faturamento começa automaticamente após esse prazo.\n6. Alimentar diariamente o histórico de cada card sob sua responsabilidade.",
+      "fecho": "afirmacao"
+    },
+    "impl_kickoff_cs": {
+      "id": "impl_kickoff_cs",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Conte como funcionam o kickoff, a verificação da Meta, a integração com o CS e o grupo de WhatsApp.",
+      "conteudo": "- Kickoff: agendar na Semana 1.\n- Facebook Verificado: verificar na primeira semana se o cliente tem para a quantidade de números contratados. Se não tiver, iniciar imediatamente os trâmites de verificação.\n- Customer Success (CS): incluir o CS em todas as reuniões e no grupo de WhatsApp da implantação, e apresentá-lo ao cliente como o ponto de apoio oficial para dúvidas, conflitos, atritos, aditivos e atrasos.\n- Grupo de WhatsApp: depois do kickoff, criar o grupo com Cliente + Implantador + CS.\n- Checklist oficial: usar o \"Template — Roteiro de Implantação da Plataforma\", no Notion. O link não consta no material de treinamento; peça ao gestor.\n- Depois de enviar a mensagem de abertura no grupo, fixar nele uma mensagem com a deadline do projeto.",
+      "fecho": "afirmacao"
+    },
+    "impl_msg_abertura": {
+      "id": "impl_msg_abertura",
+      "tipo": "template",
+      "espera": "ok",
+      "instrucao": "Diga em uma ou duas frases que agora vem a mensagem oficial de abertura do grupo, que deve ser enviada exatamente assim. O texto é anexado pelo sistema; não o reescreva.",
+      "conteudo": "Mensagem oficial de abertura do grupo de implantação no WhatsApp, enviada após o kickoff.",
+      "fecho": "afirmacao",
+      "texto_fixo": "Olá, equipe! 🚀 Sejam muito bem-vindos ao nosso grupo de implantação do Uppchannel!\n\nCriamos esse espaço para estarmos lado a lado com vocês neste momento tão importante. Aqui é onde jogamos juntos, passamos a bola rápido e garantimos que a estratégia funcione em campo.\n\nDurante toda a implantação, estaremos aqui para apoiar, orientar e tirar dúvidas. Assim que essa fase for concluída, o grupo será encerrado e o atendimento de suporte seguirá pelos nossos canais oficiais — garantindo organização, rastreabilidade e aquele jogo limpo que a gente valoriza.\n\nContem com a gente. Estamos no mesmo time! 🏉\n\nTime Uppchannel"
+    },
+    "impl_miro": {
+      "id": "impl_miro",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Conte como o fluxo do cliente é documentado no Miro e aprovado antes de ir para configuração e Desenvolvimento.",
+      "conteudo": "Antes de configurar o sistema, o implantador desenha no Miro a árvore de decisão e o fluxograma operacional do cliente: rotas de Suporte e Comercial, emissão de 2ª via de boletos, integração com CRM/ERP, envio de NFs, regras de transbordo e exceções.\n- Apresentar o fluxo ao cliente para validação e aprovação formal.\n- Fazer os ajustes necessários até a homologação do escopo.\n- Com o escopo aprovado, se houver desenvolvimento sob medida, liberar o card para o time de Desenvolvimento.",
+      "fecho": "afirmacao"
+    },
+    "impl_ia_20dias": {
+      "id": "impl_ia_20dias",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Explique a régua de implantação de Agentes de IA (20 dias corridos, 4 semanas). Escreva uma frase de abertura; o cronograma é anexado pelo sistema.",
+      "conteudo": "Quando o projeto envolve Upp IA, a implantação segue um ciclo rígido de 20 dias corridos, dividido em 4 semanas.",
+      "fecho": "afirmacao",
+      "texto_fixo": "- Semana 1: kickoff e até 5 dias úteis para definir a comunicação com o cliente e construir a V1 do agente (SDR, vendedor, recepcionista etc.), com entrega do material para a implantação.\n- Semana 2: ajustes de implantação e entrega oficial da V1 ao cliente para testes. Qualquer sinal de atraso deve ser comunicado imediatamente à liderança.\n- Semana 3: ajustes e refinamentos em ambiente de produção, com base no feedback real do cliente.\n- Semana 4: acompanhamento final, ajustes não críticos, encerramento da implantação e entrega definitiva.\n- Ritmo: as interações seguem ciclos de 1 dia; se o cliente precisa testar ou validar, orientá-lo a responder até o dia seguinte."
+    },
+    "impl_cobranca": {
+      "id": "impl_cobranca",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Conte as duas modalidades de envio automático de cobrança no Uppchannel, de forma organizada.",
+      "conteudo": "Quando a implantação inclui envio automático de cobrança, há duas modalidades:\n1. Importação de planilha Excel: a planilha precisa ter, no mínimo, Nome do Cliente, Telefone, Valor do Boleto, Data de Vencimento e Link do PDF do Boleto e/ou Linha Digitável. É importada na plataforma para disparar campanhas com variáveis dinâmicas.\n2. Integração com o ERP via API: exige validação prévia dos custos de integração. O ERP disponibiliza uma API consultada automaticamente pela plataforma nos marcos da régua de cobrança (por exemplo D-5, D-1, D+5 e D+15). A cada consulta, retorna os clientes inadimplentes com valor, vencimento, link do PDF, linha digitável e chave PIX, para disparo automatizado e recorrente.",
+      "fecho": "afirmacao"
+    },
+    "impl_treinamento_encerramento": {
+      "id": "impl_treinamento_encerramento",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Conte como termina uma implantação: configuração da conta, treinamento, virada de números, encerramento, NPS e checklist final.",
+      "conteudo": "1. Configurar a conta no Uppchannel: canais, equipes, horários e agentes.\n2. Treinar os administradores e a equipe de atendentes do cliente.\n3. Agendar e executar a virada de chave (go-live) dos números.\n4. Depois de 1 semana de operação estável:\n   - Enviar a mensagem de encerramento no grupo, direcionando o cliente ao WhatsApp oficial de suporte (http://wa.me/4835125000).\n   - Disparar a pesquisa de NPS e fazer no mínimo 3 cobranças ativas para garantir a resposta.\n   - Checklist de conclusão: documentar o cenário final nas notas do card, conferir se os dados do responsável estão completos, criar o cadastro da empresa no TomTicket, executar a automação de e-mail ao financeiro e ao responsável técnico e mover o card para \"Concluído\".",
+      "fecho": "afirmacao"
+    },
+    "impl_msg_encerramento": {
+      "id": "impl_msg_encerramento",
+      "tipo": "template",
+      "espera": "ok",
+      "instrucao": "Diga em uma ou duas frases que agora vem a mensagem oficial de encerramento do grupo. O texto é anexado pelo sistema; não o reescreva.",
+      "conteudo": "Mensagem oficial de encerramento do grupo de implantação no WhatsApp.",
+      "fecho": "afirmacao",
+      "texto_fixo": "Equipe, missão cumprida! 🏆\n\nFinalizamos a fase de implantação e agora vocês já estão prontos para jogar o jogo de verdade com o Uppchannel em campo.\n\nVamos encerrar este grupo, mas o suporte segue firme pelos nossos canais oficiais — organizados, estruturados e prontos pra atender vocês com toda a atenção que merecem:\nhttp://wa.me/4835125000\n\nAgradecemos demais a parceria durante essa jornada. Foi um prazer fazer parte dessa etapa com vocês. Seguimos juntos, no mesmo time! 🏉\n\nGrande abraço,\nTime Uppchannel"
+    },
+    "sup_niveis_sla": {
+      "id": "sup_niveis_sla",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Explique os três níveis de atendimento do Suporte e o SLA por prioridade. Escreva uma frase de abertura; níveis e SLA são anexados pelo sistema.",
+      "conteudo": "O Suporte organiza as demandas em três níveis e a prioridade define o SLA máximo de atendimento inicial.",
+      "fecho": "afirmacao",
+      "texto_fixo": "Níveis:\n- Nível 1: dúvidas simples e operações rotineiras.\n- Nível 2: questões técnicas mais complexas, que exigem análise aprofundada.\n- Nível 3: demandas de alta complexidade, que envolvem diretamente o time de Desenvolvimento.\n\nSLA por prioridade:\n- Baixa: demandas de baixo impacto, dúvidas ou solicitações que não impedem a operação. Até 48 horas úteis.\n- Média: impacto moderado, que exige análise ou suporte técnico, sem comprometimento crítico. Até 24 horas úteis.\n- Urgente: situação crítica que impede ou compromete significativamente a operação (atuação imediata). Até 8 horas úteis.\n\nO SLA é o prazo previsto para o atendimento. Demandas que dependem de desenvolvimento, fornecedores ou terceiros podem ter prazos de resolução diferentes e devem ser informadas e acompanhadas junto ao solicitante."
+    },
+    "sup_escalonamento_solicitantes": {
+      "id": "sup_escalonamento_solicitantes",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Conte a regra de escalonamento de 2 horas e a regra de cadastro de novos solicitantes.",
+      "conteudo": "Escalonamento interno: se um chamado não for resolvido em até 2 horas, ou se exigir a ação de outro setor, escalar via WhatsApp para o gestor direto, mantendo o registro formal de todas as ações no ticket.\nCadastro de novos solicitantes: para cadastrar uma nova pessoa como solicitante, é obrigatório receber um e-mail de autorização enviado por alguém já cadastrado e autorizado na base, direcionado a suporte@upptecnologia.com.br.",
+      "fecho": "afirmacao"
+    },
+    "sup_comentarios_notas": {
+      "id": "sup_comentarios_notas",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Explique a diferença entre comentário externo e nota interna no TomTicket e o alerta de segurança.",
+      "conteudo": "No TomTicket:\n- Comentários externos: toda a comunicação direcionada ao cliente.\n- Notas internas: contexto técnico e trocas de informação exclusivas da equipe interna.\nAtenção: existe alerta na base de conhecimento sobre configurações em que mensagens internas podem ser expostas. Por segurança, mantenha sempre postura profissional nas anotações e confirme as permissões do sistema antes de registrar dados sensíveis.",
+      "fecho": "afirmacao"
+    },
+    "sup_template_abertura": {
+      "id": "sup_template_abertura",
+      "tipo": "template",
+      "espera": "ok",
+      "instrucao": "Diga em uma ou duas frases que todo chamado novo no TomTicket deve seguir este modelo de abertura. O modelo é anexado pelo sistema; não o reescreva.",
+      "conteudo": "Template obrigatório de abertura de chamado no TomTicket.",
+      "fecho": "afirmacao",
+      "texto_fixo": "📄 O que está acontecendo?\n[Descrição detalhada do problema ou solicitação relatada pelo cliente]\n\n📍 Onde está acontecendo?\n[Tela, ramal, endpoint, canal, equipamento ou unidade afetada]\n\n📆 Desde quando?\n[Data e horário aproximados de início]\n\n🔍 O que foi feito até agora?\n- [Teste ou verificação 1]\n- [Teste ou verificação 2]\n- [Evidência coletada: print ou log]\n\n🗒 Observações:\n[Nível de urgência e impacto na operação do cliente]\n\nExemplo preenchido:\n📄 Cliente relata que chamadas estão caindo após 10 segundos.\n📍 Em todos os ramais da loja central.\n📆 Hoje pela manhã (24/10 às 08:30).\n🔍 Verificado status do ramal no servidor; testada ligação direta pelo painel; coletado print do código de erro.\n🗒 Cliente com urgência, pois o telefone é o canal principal de vendas da loja."
+    },
+    "sup_template_fechamento": {
+      "id": "sup_template_fechamento",
+      "tipo": "template",
+      "espera": "ok",
+      "instrucao": "Diga em uma ou duas frases que todo chamado resolvido deve ser fechado com este modelo. O modelo é anexado pelo sistema; não o reescreva.",
+      "conteudo": "Template obrigatório de fechamento de chamado no TomTicket.",
+      "fecho": "afirmacao",
+      "texto_fixo": "✅ O que foi feito para resolver?\n[Descrição clara da ação corretiva executada]\n\n👤 Quem realizou a ação?\n[Nome e nível do analista ou equipe]\n\n📞 O cliente confirmou que o problema foi resolvido?\n[Sim ou não; como o teste foi validado com o cliente]\n\n🗒 Observações finais:\n[Orientações de monitoramento passadas ao cliente]\n\nExemplo preenchido:\n✅ Corrigida a configuração de roteamento no painel da central PABX.\n👤 Analista Gabriel (Suporte Nível 2).\n📞 Sim, o cliente testou 3 ramais e confirmou o funcionamento normal.\n🗒 Cliente orientado a monitorar a estabilidade e acionar os canais oficiais em caso de recorrência."
+    },
+    "sup_rotinas_1": {
+      "id": "sup_rotinas_1",
+      "tipo": "template",
+      "espera": "ok",
+      "instrucao": "Diga em uma ou duas frases que agora vêm as rotinas operacionais do Suporte, em partes, começando por regeneração de 0800 e cancelamento de conta. Os passos são anexados pelo sistema; não os reescreva.",
+      "conteudo": "Rotinas operacionais do Suporte, parte 1: regeneração de número 0800 e cancelamento de conta.",
+      "fecho": "afirmacao",
+      "texto_fixo": "Regeneração de número 0800:\n1. Ligar para a operadora de telefonia.\n2. Informar o CNPJ da empresa.\n3. Informar o número 0800 a ser regenerado.\n4. Em caso de troca, informar expressamente qual é o número anterior.\n5. Anotar o número do protocolo.\n6. Acompanhar o processo até a conclusão.\n\nCancelamento de conta:\n1. Solicitar o backup das conversas da Fortics via chamado.\n2. Exportar as conversas pelo painel do Uppchannel antes do encerramento.\n3. Encerrar as contas com a BSP e solicitar o reembolso de saldos (se houver).\n4. Cancelar o canal no Z-API (se houver).\n5. Excluir o ramal da central PABX.\n6. Excluir o tronco associado."
+    },
+    "sup_rotinas_2": {
+      "id": "sup_rotinas_2",
+      "tipo": "template",
+      "espera": "ok",
+      "instrucao": "Diga em uma ou duas frases que seguem mais duas rotinas: aparelhos locados e binagem randômica. Os passos são anexados pelo sistema; não os reescreva.",
+      "conteudo": "Rotinas operacionais do Suporte, parte 2: devolução e teste de aparelhos locados e binagem randômica.",
+      "fecho": "afirmacao",
+      "texto_fixo": "Devolução e teste de aparelhos locados:\n1. Receber e conferir o kit completo: aparelho telefônico, fonte de alimentação, monofone + cabo RJ11, cabo de rede RJ45, suporte de apoio e caixa original.\n2. Inspecionar fisicamente em busca de danos e trincas.\n3. Conectar à energia e à rede, configurar um ramal de testes, fazer chamadas de teste e higienizar/limpar o equipamento por completo.\n\nBinagem randômica:\n1. Enviar e-mail ao Diogo (Sysvoip) solicitando o tronco com custo para a Upp (conforme previsão contratual).\n2. Copiar o setor financeiro da Upp no e-mail.\n3. Aguardar os dados de configuração, parametrizar na central e validar no billing para garantir o faturamento correto dos minutos."
+    },
+    "sup_rotinas_3": {
+      "id": "sup_rotinas_3",
+      "tipo": "template",
+      "espera": "ok",
+      "instrucao": "Diga em uma ou duas frases que seguem as rotinas de solicitações autorizadas por diretor, aditivos, backup e política de cancelamento. Os passos são anexados pelo sistema; não os reescreva.",
+      "conteudo": "Rotinas operacionais do Suporte, parte 3: solicitações autorizadas por diretor, aditivos e backup, e política de cancelamento de clientes.",
+      "fecho": "afirmacao",
+      "texto_fixo": "Solicitações autorizadas por diretor:\nEnviar e-mail formal ao financeiro (financeiro@upptecnologia.com.br), copiando obrigatoriamente o diretor que autorizou e o gestor direto.\n\nAditivos contratuais:\nReceber o card no painel de implantação preenchido pelo time de CS. Depois de executar, encaminhar o card ao financeiro e registrar as alterações no funil do CS chamado Relacionamento de Carteira Ativa.\n\nBackup de conta:\nO cliente solicita por e-mail ao suporte. O SLA de execução é de 30 dias, e as mídias geradas ficam disponíveis para download por 5 dias.\n\nPolítica de cancelamento de clientes:\nTodo pedido de cancelamento, de qualquer canal, deve ir ao time de Customer Success (CS) em até 24 horas. O CS é o único responsável por conduzir a retenção e formalizar o encerramento com o financeiro."
+    },
+    "sup_rotinas_4": {
+      "id": "sup_rotinas_4",
+      "tipo": "template",
+      "espera": "ok",
+      "instrucao": "Diga em uma ou duas frases que esta é a última rotina: cancelamento de ramais. Os passos são anexados pelo sistema; não os reescreva.",
+      "conteudo": "Rotinas operacionais do Suporte, parte 4: cancelamento de ramais.",
+      "fecho": "afirmacao",
+      "texto_fixo": "Ao receber a solicitação de cancelamento vinda do financeiro:\n1. Confirmar com o solicitante se o cancelamento abrange todos os ramais ou apenas ramais específicos.\n2. Confirmar expressamente se envolve apenas as extensões ou também o encerramento de troncos, tarifas, roteamento de tronco e grupos de tarifas.\n3. Registrar todas as validações no ticket antes de executar a exclusão no PABX."
+    },
+    "dev_intro": {
+      "id": "dev_intro",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Explique como o Desenvolvimento recebe demandas e a regra de que só aceita demanda qualificada, nos três formatos.",
+      "conteudo": "O time de Desenvolvimento recebe demandas do Suporte (por exemplo, um bug estrutural de Nível 3), da Implantação (customização sob medida, depois do escopo aprovado no Miro) e de Produtos.\nRegra: toda demanda deve ser previamente qualificada pelo solicitante, e o Dev só aceita cards devidamente qualificados. Os três formatos são Feature (nova funcionalidade), Bug (erro ou falha) e Solicitação (ajuste ou melhoria pontual).",
+      "fecho": "afirmacao"
+    },
+    "dev_feature": {
+      "id": "dev_feature",
+      "tipo": "template",
+      "espera": "ok",
+      "instrucao": "Diga em uma ou duas frases que este é o formato obrigatório para pedir uma nova funcionalidade. O formato é anexado pelo sistema; não o reescreva.",
+      "conteudo": "Formato obrigatório de qualificação para Feature (nova funcionalidade).",
+      "fecho": "afirmacao",
+      "texto_fixo": "🚀 O que precisa ser desenvolvido?\n🎯 Qual problema essa feature resolve?\n📍 Onde será utilizada? (Dashboard, App etc.)\n💡 Requisitos e ideias iniciais (filtros, permissões etc.)\n📆 Prazo esperado ou marco importante\n👤 Solicitante / Dono do projeto\n🗒 Observações"
+    },
+    "dev_bug": {
+      "id": "dev_bug",
+      "tipo": "template",
+      "espera": "ok",
+      "instrucao": "Diga em uma ou duas frases que este é o formato obrigatório para reportar um bug e que passos de reprodução e evidências são obrigatórios. O formato é anexado pelo sistema; não o reescreva.",
+      "conteudo": "Formato obrigatório de qualificação para Bug (erro ou falha).",
+      "fecho": "afirmacao",
+      "texto_fixo": "🐞 Qual é o problema? (descrição clara do que foi observado)\n📍 Onde acontece? (tela, endpoint etc.)\n📆 Desde quando?\n🔁 Passos exatos para reproduzir (obrigatório):\n   1. Acessar a tela X\n   2. Clicar no botão Y\n   3. Preencher o campo Z\n   4. Clicar em Salvar → resultado observado\n📸 Evidências (obrigatório): prints, vídeos ou logs\n👤 Reportado por\n🗒 Abrangência: afeta todos os usuários ou apenas um perfil específico?"
+    },
+    "dev_solicitacao": {
+      "id": "dev_solicitacao",
+      "tipo": "template",
+      "espera": "ok",
+      "instrucao": "Diga em uma ou duas frases que este é o formato para ajustes e melhorias pontuais. O formato é anexado pelo sistema; não o reescreva.",
+      "conteudo": "Formato obrigatório de qualificação para Solicitação (ajuste ou melhoria pontual).",
+      "fecho": "afirmacao",
+      "texto_fixo": "📄 O que está sendo solicitado?\n🎯 Qual o objetivo do ajuste?\n📍 Onde se aplica?\n📆 Prazo / urgência (Baixa / Média / Alta)\n👤 Solicitante\n🗒 Observações adicionais"
+    },
+    "cruz_suporte": {
+      "id": "cruz_suporte",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Explique em poucas frases como o Suporte funciona e como ele se conecta com o setor da pessoa.",
+      "conteudo": "Visão do Suporte: quando a implantação termina e o cliente é cadastrado no TomTicket, é o Suporte que assume.\nNíveis: Nível 1 (dúvidas simples), Nível 2 (técnicas mais complexas), Nível 3 (alta complexidade, envolve o Desenvolvimento).\nSLA inicial: baixa até 48 horas úteis; média até 24 horas úteis; urgente até 8 horas úteis.\nChamado sem solução em 2 horas, ou que exige outra área, vai por WhatsApp ao gestor direto, com registro no ticket.\nNovos solicitantes só com e-mail de autorização enviado a suporte@upptecnologia.com.br. Todo pedido de cancelamento vai ao CS em até 24 horas.",
+      "fecho": "afirmacao"
+    },
+    "cruz_impl": {
+      "id": "cruz_impl",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Explique em poucas frases como a Implantação funciona e como ela se conecta com o setor da pessoa.",
+      "conteudo": "Visão da Implantação: recebe o card depois da venda, confere os dados e faz o kickoff na Semana 1, com o formulário de implantação. Inclui o CS no grupo de WhatsApp. Desenha o fluxograma no Miro e o cliente aprova. Se houver desenvolvimento sob medida, libera o card para o Dev.\nAgentes de IA seguem uma régua de 20 dias, em 4 semanas.\nNo fim: treinamento, virada de números, encerramento do grupo, NPS, cadastro no TomTicket e card concluído. Daí o Suporte assume. Aditivos chegam como card no painel de implantação, preenchido pelo CS.",
+      "fecho": "afirmacao"
+    },
+    "cruz_dev": {
+      "id": "cruz_dev",
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Explique em poucas frases como o Desenvolvimento recebe demandas e o que não pode faltar em cada formato.",
+      "conteudo": "Visão do Desenvolvimento: só aceita demanda previamente qualificada pelo solicitante (Suporte, Implantação ou Produtos), em três formatos.\n- Feature: o que desenvolver, problema que resolve, onde será usada, requisitos, prazo e solicitante.\n- Bug: descrição, local exato, desde quando, passos para reproduzir e evidências obrigatórias (prints, vídeos ou logs), mais o impacto.\n- Solicitação: o que é pedido, objetivo, onde se aplica, prazo ou urgência e solicitante.",
+      "fecho": "afirmacao"
+    },
+    "rec_canais": {
+      "id": "rec_canais",
+      "tipo": "template",
+      "espera": "ok",
+      "instrucao": "Diga em uma ou duas frases que vai passar os contatos oficiais que a pessoa deve guardar. A lista é anexada pelo sistema; não a reescreva.",
+      "conteudo": "Canais oficiais de atendimento e comunicação da Upp.",
+      "fecho": "afirmacao",
+      "texto_fixo": "- WhatsApp principal e suporte: +55 48 3512-5000\n- WhatsApp comercial receptivo: +55 48 3512-5001\n- WhatsApp comercial ativo: +55 48 3512-2081\n- E-mail financeiro (aditivos e notas): financeiro@upptecnologia.com.br\n- E-mail suporte (autorizações e acessos): suporte@upptecnologia.com.br\n- Portal TomTicket: https://absoluta-auditoria.tomticket.com"
+    },
+    "rec_status_miro": {
+      "id": "rec_status_miro",
+      "tipo": "template",
+      "espera": "ok",
+      "instrucao": "Diga em uma ou duas frases que agora vêm as páginas de status dos fornecedores e os quadros do Miro. A lista é anexada pelo sistema; não a reescreva.",
+      "conteudo": "Páginas de status dos fornecedores e quadros de fluxo no Miro.",
+      "fecho": "afirmacao",
+      "texto_fixo": "Páginas de status:\n- Fortics: https://fortics.statuspage.io\n- DigitalOcean: https://status.digitalocean.com\n- Gupshup: https://status.gupshup.io\n- Meta (WhatsApp/Instagram/Facebook): https://metastatus.com\n- 360dialog: https://status.360dialog.com\n- Supabase e OpenAI: consultar as páginas oficiais de status dos provedores.\n\nQuadros de fluxo no Miro:\n- Desenvolvimento: https://miro.com/app/board/uXjVGXOQ5Fo=/\n- Implantação: https://miro.com/app/board/uXjVGebGRmI=/\n- Suporte: https://miro.com/app/board/uXjVGdE_Vjk=/"
+    },
+    "rec_docs": {
+      "id": "rec_docs",
+      "tipo": "template",
+      "espera": "ok",
+      "instrucao": "Diga em uma ou duas frases que agora vêm as bases de conhecimento e as documentações. A lista é anexada pelo sistema; não a reescreva.",
+      "conteudo": "Bases de conhecimento e documentação de APIs.",
+      "fecho": "afirmacao",
+      "texto_fixo": "- Base de conhecimento interna (TomTicket): https://absoluta-auditoria.tomticket.com/kb/\n- Manuais dos produtos (Fortics): https://support.fortics.com.br/pt-BR/support/solutions\n- Documentação API Uppchannel Plus: https://uppchannel.readme.io\n- Documentação API Uppchannel: https://absoluta.uppchannel.com.br/docs/pt-br/overview\n- Documentação no app: https://app.uppchannel.com.br/docs\n- Estrutura de link Z-API: https://absoluta.uppchannel.com.br/webchat/v2/?cid=645b96c057c96b0019e47f88&host=https://absoluta.uppchannel.com.br&szf_instancia={{instancia}}&szf_z_token={{token}}"
+    },
+    "rec_meta_custos": {
+      "id": "rec_meta_custos",
+      "tipo": "template",
+      "espera": "ok",
+      "instrucao": "Diga em uma ou duas frases que agora vêm os custos da API oficial do WhatsApp (Meta). A tabela é anexada pelo sistema; não a reescreva.",
+      "conteudo": "Custos da API oficial da Meta (WhatsApp Business API), cotados em dólares por modelo de mensagem.",
+      "fecho": "afirmacao",
+      "texto_fixo": "- Marketing: US$ 0,0625\n- Utilidade: US$ 0,0068\n- Autenticação: US$ 0,0068\n- Serviço (mensagens receptivas de atendimento): gratuito\n\nOs valores são definidos pela Meta e podem mudar. Preço oficial: https://developers.facebook.com/docs/whatsapp/pricing/updates-to-pricing"
+    },
+    "rec_aparelhos": {
+      "id": "rec_aparelhos",
+      "tipo": "template",
+      "espera": "ok",
+      "instrucao": "Diga em uma ou duas frases que agora vem o comparativo de telefones IP para recomendar a clientes. A lista é anexada pelo sistema; não a reescreva.",
+      "conteudo": "Comparativo oficial de aparelhos telefônicos para recomendação.",
+      "fecho": "afirmacao",
+      "texto_fixo": "- Intelbras TIP 1001D: ruim / mediano (alta recorrência de problemas).\n- Fanvil W610W: mediano.\n- Base Grandstream DP752 + aparelho DP722: melhor opção e recomendação principal. Uma única base DP752 suporta até 5 aparelhos DP722."
+    },
+    "quiz_cancelamento": {
+      "id": "quiz_cancelamento",
+      "tipo": "quiz",
+      "espera": "resposta",
+      "instrucao": "Corrija ou complemente a resposta em até 3 frases, sem bronca.",
+      "conteudo": "",
+      "fecho": "afirmacao",
+      "pergunta": "Cenário: um cliente te chamou no WhatsApp pedindo o cancelamento imediato do contrato. O que você faz?",
+      "gabarito": "Não cancela direto. Encaminha o pedido ao time de Customer Success (CS) em até 24 horas, qualquer que seja o canal. O CS conduz a retenção e formaliza o encerramento com o financeiro."
+    },
+    "quiz_ramal": {
+      "id": "quiz_ramal",
+      "tipo": "quiz",
+      "espera": "resposta",
+      "instrucao": "Corrija ou complemente a resposta em até 3 frases, sem bronca.",
+      "conteudo": "",
+      "fecho": "afirmacao",
+      "pergunta": "Cenário: você vai cadastrar um novo colaborador interno. Qual faixa de ramal usa, e onde mais o ramal precisa entrar?",
+      "gabarito": "Faixa 50xx. O ramal também deve ser incluído no MicroSIP e no servidor FTP."
+    },
+    "quiz_ia_prazo": {
+      "id": "quiz_ia_prazo",
+      "tipo": "quiz",
+      "espera": "resposta",
+      "instrucao": "Corrija ou complemente a resposta em até 3 frases, sem bronca.",
+      "conteudo": "",
+      "fecho": "afirmacao",
+      "pergunta": "Cenário: qual é o prazo total de implantação de um Agente de IA, e como ele se divide?",
+      "gabarito": "20 dias corridos, em 4 semanas. Semana 1: kickoff e V1 do agente (até 5 dias úteis). Semana 2: ajustes e entrega da V1 ao cliente. Semana 3: ajustes em produção com o feedback. Semana 4: acompanhamento final, ajustes não críticos e encerramento."
+    },
+    "quiz_cs_grupo": {
+      "id": "quiz_cs_grupo",
+      "tipo": "quiz",
+      "espera": "resposta",
+      "instrucao": "Corrija ou complemente a resposta em até 3 frases, sem bronca.",
+      "conteudo": "",
+      "fecho": "afirmacao",
+      "pergunta": "Cenário: depois do kickoff, quem entra no grupo de WhatsApp com o cliente, e por que o CS precisa estar lá?",
+      "gabarito": "Cliente + Implantador + CS. O CS é o ponto de apoio oficial do cliente para dúvidas, conflitos, atritos, aditivos e atrasos, e deve estar em todas as reuniões."
+    },
+    "quiz_facebook": {
+      "id": "quiz_facebook",
+      "tipo": "quiz",
+      "espera": "resposta",
+      "instrucao": "Corrija ou complemente a resposta em até 3 frases, sem bronca.",
+      "conteudo": "",
+      "fecho": "afirmacao",
+      "pergunta": "Cenário: na primeira semana você descobre que o cliente não tem Facebook Verificado para a quantidade de números contratados. O que faz?",
+      "gabarito": "Inicia imediatamente os trâmites de verificação."
+    },
+    "quiz_2h": {
+      "id": "quiz_2h",
+      "tipo": "quiz",
+      "espera": "resposta",
+      "instrucao": "Corrija ou complemente a resposta em até 3 frases, sem bronca.",
+      "conteudo": "",
+      "fecho": "afirmacao",
+      "pergunta": "Cenário: você assumiu um chamado e já se passaram 2 horas sem resolver. O que faz?",
+      "gabarito": "Escala via WhatsApp para o gestor direto e registra no ticket (TomTicket) as ações e o escalonamento."
+    },
+    "quiz_solicitante": {
+      "id": "quiz_solicitante",
+      "tipo": "quiz",
+      "espera": "resposta",
+      "instrucao": "Corrija ou complemente a resposta em até 3 frases, sem bronca.",
+      "conteudo": "",
+      "fecho": "afirmacao",
+      "pergunta": "Cenário: alguém que você não conhece pede para abrir um ticket em nome de um cliente. Você pode cadastrar direto?",
+      "gabarito": "Não. É obrigatório um e-mail de autorização enviado por alguém já cadastrado e autorizado, direcionado a suporte@upptecnologia.com.br."
+    },
+    "quiz_comentarios": {
+      "id": "quiz_comentarios",
+      "tipo": "quiz",
+      "espera": "resposta",
+      "instrucao": "Corrija ou complemente a resposta em até 3 frases, sem bronca.",
+      "conteudo": "",
+      "fecho": "afirmacao",
+      "pergunta": "Cenário: qual é a diferença prática entre comentário externo e nota interna no TomTicket?",
+      "gabarito": "Comentário externo é a comunicação com o cliente. Nota interna é contexto técnico entre a equipe. Como a visibilidade das notas pode variar, manter tom profissional e confirmar permissões antes de registrar dados sensíveis."
+    },
+    "quiz_aparelho": {
+      "id": "quiz_aparelho",
+      "tipo": "quiz",
+      "espera": "resposta",
+      "instrucao": "Corrija ou complemente a resposta em até 3 frases, sem bronca.",
+      "conteudo": "",
+      "fecho": "afirmacao",
+      "pergunta": "Cenário: um cliente quer comprar um telefone IP. Qual você recomenda?",
+      "gabarito": "Base Grandstream DP752 + aparelho DP722, a melhor opção. Uma base suporta até 5 aparelhos DP722. O Intelbras TIP 1001D tem muitos problemas e o Fanvil W610W é mediano."
+    },
+    "quiz_bug": {
+      "id": "quiz_bug",
+      "tipo": "quiz",
+      "espera": "resposta",
+      "instrucao": "Corrija ou complemente a resposta em até 3 frases, sem bronca.",
+      "conteudo": "",
+      "fecho": "afirmacao",
+      "pergunta": "Cenário: o que não pode faltar em um card de bug para o Desenvolvimento aceitar?",
+      "gabarito": "Passos exatos para reproduzir e evidências (prints, vídeos ou logs), além de descrição clara, local exato, desde quando ocorre e abrangência do impacto."
+    },
+    "quiz_tipos": {
+      "id": "quiz_tipos",
+      "tipo": "quiz",
+      "espera": "resposta",
+      "instrucao": "Corrija ou complemente a resposta em até 3 frases, sem bronca.",
+      "conteudo": "",
+      "fecho": "afirmacao",
+      "pergunta": "Cenário: qual é a diferença entre Feature, Bug e Solicitação?",
+      "gabarito": "Feature é uma nova funcionalidade. Bug é um erro ou falha. Solicitação é um ajuste ou melhoria pontual."
+    },
+    "quiz_nivel3": {
+      "id": "quiz_nivel3",
+      "tipo": "quiz",
+      "espera": "resposta",
+      "instrucao": "Corrija ou complemente a resposta em até 3 frases, sem bronca.",
+      "conteudo": "",
+      "fecho": "afirmacao",
+      "pergunta": "Cenário: quando um chamado do Suporte chega ao Desenvolvimento, e quem qualifica a demanda?",
+      "gabarito": "Quando é Nível 3 (alta complexidade, envolve diretamente o time de Desenvolvimento) ou há um bug estrutural. A demanda é qualificada antes pelo solicitante (Suporte, Implantação ou Produtos), no formato padrão."
+    },
+    "encerramento": {
+      "id": "encerramento",
+      "tipo": "encerramento",
+      "espera": "resposta",
+      "instrucao": "Parabenize a pessoa pelo nome, faça um resumo curto do que ela viu (cultura, configuração, rotina, processos do setor dela, visão dos outros setores e recursos), diga que o time joga junto, passa a bola rápido e mantém o jogo limpo, e pergunte se ficou alguma dúvida. Próximos passos: diga que o gestor vai orientar nos próximos dias.",
+      "conteudo": "Fim da trilha de onboarding. Resumo: cultura e pilares, configuração da estação de trabalho, rotina e regras de atendimento, processos do setor, visão dos outros setores e recursos oficiais.",
+      "fecho": "pergunta"
+    }
+  }
+}
