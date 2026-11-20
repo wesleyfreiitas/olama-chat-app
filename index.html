@@ -98,8 +98,8 @@
     </div>
     <script>
       const $ = (id) => document.getElementById(id);
-      const isChatRoute = location.pathname === '/chat';
-      if (isChatRoute) { document.querySelector('aside')?.remove(); document.querySelector('.app')?.classList.add('chat-only'); }
+      const isChatRoute = true;
+      if (isChatRoute) { document.querySelector('aside').hidden = true; document.querySelector('.app')?.classList.add('chat-only'); }
       const state = { messages: [], loading: false, conversationId: crypto.randomUUID() };
       const savedPrompt = isChatRoute ? null : localStorage.getItem('llama-chat-prompt');
       const savedTraining = isChatRoute ? null : localStorage.getItem('llama-chat-training');

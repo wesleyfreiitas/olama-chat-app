@@ -6,7 +6,7 @@ let testConversationId = crypto.randomUUID();
 const debugPanel = document.createElement('details');
 debugPanel.className = 'request-debug';
 debugPanel.style.cssText = 'margin:12px 0 0;border:1px solid #263542;border-radius:9px;padding:9px;color:#90a4ad;font-size:11px';
-debugPanel.innerHTML = '<summary style="cursor:pointer;color:#a7f3d0">Ver requisição enviada ao Ollama</summary><pre id="requestDebug" style="white-space:pre-wrap;max-height:220px;overflow:auto;margin:9px 0 0;color:#edf5f2;font:11px/1.5 monospace">Envie uma pergunta para visualizar o system prompt e as mensagens.</pre>';
+debugPanel.innerHTML = '<summary style="cursor:pointer;color:#a7f3d0">Ver dados enviados para teste</summary><pre id="requestDebug" style="white-space:pre-wrap;max-height:220px;overflow:auto;margin:9px 0 0;color:#edf5f2;font:11px/1.5 monospace">Envie uma pergunta para visualizar os dados do teste.</pre>';
 document.querySelector('.test-form')?.before(debugPanel);
 
 const generationPanel = document.createElement('div');
@@ -96,8 +96,7 @@ $('testForm').addEventListener('submit', async (event) => {
   $('testInput').value = '';
   addMessage('user', text);
   testMessages.push({ role: 'user', content: text });
-  const systemPreview = $('prompt').value + ($('training').value ? `\n\n=== MATERIAL DE TREINAMENTO ===\n${$('training').value}\n=== FIM DO MATERIAL ===` : '');
-  $('requestDebug').textContent = JSON.stringify({ model: $('model').value, messages: [{ role: 'system', content: systemPreview }, ...testMessages] }, null, 2);
+  $('requestDebug').textContent = JSON.stringify({ model: $('model').value, prompt: $('prompt').value, thinking: $('thinking').value, temperature: Number($('temperature').value), messages: testMessages, aviso: 'O servidor determina se usa a base indexada como ferramenta ou o material não salvo como contexto.' }, null, 2);
   $('testStatus').textContent = 'pensando…';
   try {
     const data = await api('/api/admin/test', { method: 'POST', body: JSON.stringify({ conversationId: testConversationId, model: $('model').value, prompt: $('prompt').value, training: $('training').value, thinking: $('thinking').value, temperature: Number($('temperature').value), messages: testMessages }) });

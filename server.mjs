@@ -18,7 +18,6 @@ const pdfPython = process.env.PDF_PYTHON || 'C:\\Users\\User\\.cache\\codex-runt
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml' };
 const configPath = join(root, 'agent-config.json');
 const dbPath = join(root, 'llama-chat.sqlite');
-const onboardingFlow = JSON.parse(await readFile(join(root, 'onboarding-flow.json'), 'utf8'));
 const db = new DatabaseSync(dbPath);
 db.exec(`CREATE TABLE IF NOT EXISTS agent_config (key TEXT PRIMARY KEY, value TEXT NOT NULL); CREATE TABLE IF NOT EXISTS conversations (id TEXT PRIMARY KEY, created_at TEXT NOT NULL); CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, conversation_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL, FOREIGN KEY (conversation_id) REFERENCES conversations(id)); CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, id);`);
 const adminPassword = process.env.ADMIN_PASSWORD || crypto.randomBytes(12).toString('base64url');
@@ -27,7 +26,6 @@ const supabaseUrl = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
 const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 let hasSupabase = Boolean(supabaseUrl && supabaseKey);
 const sessions = new Map();
-const onboardingSessions = new Map();
 let indexedTrainingHash = '';
 let agentConfig = { prompt: 'Você é um assistente útil, claro e direto. Responda sempre em português do Brasil. Se não souber algo, diga que não sabe.', training: '', model: 'llama3.2:1b', thinking: 'off', temperature: ollamaTemperature };
 const configRows = db.prepare('SELECT key, value FROM agent_config').all();
@@ -78,84 +76,6 @@ async function loadAgentConfig() { if (!hasSupabase) return agentConfig; const r
 function trainingHash(training) { return crypto.createHash('sha256').update(String(training || ''), 'utf8').digest('hex'); }
 const INDEX_FORMAT_VERSION = 'chunks-v2';
 function indexedTrainingKey(training) { return trainingHash(`${INDEX_FORMAT_VERSION}:${String(training || '')}`); }
-function buildConversationMemory(messages) {
-  const userText = messages.filter((message) => message.role === 'user').map((message) => String(message.content || '')).join(' ').toLowerCase();
-  const sector = userText.match(/\b(implantação|implantacao|suporte|desenvolvimento)\b/)?.[1];
-  const name = userText.match(/(?:meu nome é|me chamo)\s+([a-záàâãéêíóôõúç]+(?:\s+[a-záàâãéêíóôõúç]+){0,2})/i)?.[1];
-  const normalizedSector = sector?.startsWith('implanta') ? 'Implantação' : sector ? sector[0].toUpperCase() + sector.slice(1) : '';
-  const facts = [name ? `Nome já informado: ${name}. Não pergunte novamente o nome.` : '', normalizedSector ? `Setor já informado e confirmado: ${normalizedSector}. Não pergunte novamente qual é o setor, a menos que a pessoa diga que informou errado ou queira mudar de setor.` : 'Setor ainda não confirmado. Pergunte o setor antes de avançar no onboarding.'].filter(Boolean).join(' ');
-  return facts;
-}
-function getOnboardingState(id) { if (!onboardingSessions.has(id)) onboardingSessions.set(id, { stage: 'aguardando_nome', sector: '', name: '', stepIndex: 0, stepDelivered: false, nextChunkIndex: 0, continueRequested: false }); return onboardingSessions.get(id); }
-function isContinuationRequest(text) {
-  const value = String(text || '').trim().toLowerCase();
-  return /\b(podemos seguir|vamos seguir|pode seguir|podemos continuar|vamos continuar|pode continuar|vamos avancar|vamos avançar|pode avancar|pode avançar|seguir em frente|continue|continuar|avançar|avancar)\b/.test(value)
-    || /^(sim|s|ok|okay|certo|pode|fala|manda|entendi|entendido|ficou claro)[.!\s]*$/i.test(value);
-}
-function updateOnboardingState(state, messages) {
-  const userMessages = messages.filter((message) => message.role === 'user').map((message) => String(message.content || '').trim());
-  const latest = userMessages.at(-1)?.toLowerCase() || '';
-  const sector = latest.match(/\b(implantação|implantacao|suporte|desenvolvimento)\b/)?.[1];
-  if (sector) { const nextSector = sector.startsWith('implanta') ? 'Implantação' : sector[0].toUpperCase() + sector.slice(1); if (state.sector !== nextSector) { state.sector = nextSector; state.stage = 'roteiro'; state.stepIndex = 0; state.stepDelivered = false; } }
-  const looksLikeName = !/^(oi|olá|ola|cheguei|cheguei agr|tudo bem|sim|s|ok|okay|não sei|nao sei)[.!\s]*$/i.test(latest) && /^[a-záàâãéêíóôõúç]+(?:\s+[a-záàâãéêíóôõúç]+){0,2}$/i.test(latest);
-  if (!sector && state.stage === 'aguardando_nome' && userMessages.length >= 2 && looksLikeName) { state.name = latest; state.stage = 'aguardando_setor'; }
-  if (isContinuationRequest(latest) && state.stage === 'apresentando_material') { state.nextChunkIndex += 1; state.continueRequested = true; }
-  return state;
-}
-function deterministicOnboardingReply(state, messages) {
-  const userMessages = messages.filter((message) => message.role === 'user');
-  const latest = String(userMessages.at(-1)?.content || '').trim();
-  if (state.stage === 'aguardando_nome' && userMessages.length === 1) return 'Olá! Boas-vindas à Upp Tecnologia. Eu sou a Sofia e vou conduzir seu onboarding. Qual é o seu nome?';
-  if (state.stage === 'aguardando_nome' && latest) return 'Para começarmos, qual é o seu nome?';
-  if (state.stage === 'aguardando_setor') return 'Obrigado! Em qual setor você vai atuar: Implantação, Suporte ou Desenvolvimento?';
-  return '';
-}
-async function getTrainingChunk(index) { const rows = await supabaseRequest(`training_chunks?material_id=eq.1&chunk_index=eq.${Math.max(0, Number(index) || 0)}&select=chunk_index,content&limit=1`); return rows[0] || null; }
-function formatNextChunk(chunk, state) { return chunk ? `Certo, vamos continuar o onboarding.\n\n${chunk.content}\n\nQuando estiver pronto, envie “sim” para seguirmos.` : 'Concluímos o conteúdo disponível para esta etapa do onboarding. Se quiser, posso esclarecer alguma dúvida específica.'; }
-function flowKey(sector) { return String(sector || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
-function flowTokens(text) { return String(text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim(); }
-function flowStep(state) { const ids = onboardingFlow.trilhas?.[flowKey(state.sector)]; return ids?.[state.stepIndex] ? onboardingFlow.passos[ids[state.stepIndex]] : null; }
-function flowReplace(template, values) { return String(template || '').replace(/\{(\w+)\}/g, (_, key) => values[key] ?? ''); }
-function flowAdvanceIntent(message, expected) {
-  const value = flowTokens(message);
-  const phrases = (onboardingFlow.intencoes?.avancar || []).map(flowTokens);
-  if (phrases.some((phrase) => value === phrase)) return true;
-  if (/^(ok|sim|certo|beleza|show|bora|continua|continue|vamos|pode seguir|pode continuar|entendi|ficou claro)([\s,!.].*)?$/i.test(value)) return true;
-  if (expected === 'feito' && /\b(feito|pronto|terminei|conclui|finalizei)\b/.test(value)) return true;
-  return /\b(podemos seguir|vamos seguir|pode seguir|podemos continuar|vamos continuar|pode avancar|vamos avancar|seguir em frente)\b/.test(value);
-}
-function flowValues(state, step) { return { nome: state.name || 'colega', setor: state.sector || '', instrucao: step?.instrucao || '', conteudo: step?.conteudo || '', fecho: step?.fecho || 'afirmacao', pergunta: step?.pergunta || '', gabarito: step?.gabarito || '' }; }
-async function composeFlowStep(model, messages, state, generation, prefix = '') {
-  const step = flowStep(state); if (!step) return { message: { role: 'assistant', content: 'Concluímos o roteiro de onboarding. Se ficou alguma dúvida, pode me chamar.' } };
-  const values = flowValues(state, step); state.stepDelivered = true;
-  if (step.tipo === 'quiz') return { message: { role: 'assistant', content: `${prefix ? `${prefix}\n\n` : ''}${onboardingFlow.mensagens_fixas?.quiz_prefixos?.[state.stepIndex % 3] || 'Vamos praticar:'}\n\n${step.pergunta}` } };
-  const flowPrompt = flowReplace(onboardingFlow.prompt_base, values);
-  const result = await runOllamaAgent(model, [generation.basePrompt, flowPrompt].filter(Boolean).join('\n\n=== INSTRUÇÕES DA ETAPA ===\n'), messages, false, state, '', generation);
-  let content = result.message?.content || 'Vamos seguir com o próximo passo.';
-  if (prefix) content = `${prefix}\n\n${content}`;
-  if (step.texto_fixo) content += `\n\n${step.texto_fixo}`;
-  if (step.fecho_fixo_opcoes?.length) content += `\n\n${step.fecho_fixo_opcoes[0]}`;
-  return { message: { role: 'assistant', content } };
-}
-async function runScriptedOnboarding(model, messages, state, generation) {
-  if (state.stage !== 'roteiro' || !state.sector) return null;
-  const step = flowStep(state); if (!step) { state.stage = 'encerrado'; return { message: { role: 'assistant', content: `Parabéns, ${state.name || 'colega'}! Concluímos o onboarding. Se ficou alguma dúvida, pode me chamar.` } }; }
-  const latest = messages.filter((message) => message.role === 'user').at(-1)?.content || '';
-  if (!state.stepDelivered) return composeFlowStep(model, messages, state, generation);
-  if (step.tipo === 'quiz') {
-    const values = flowValues(state, step); values.resposta = latest;
-    const quizPrompt = flowReplace(onboardingFlow.prompt_quiz, values);
-    const result = await runOllamaAgent(model, [generation.basePrompt, quizPrompt].filter(Boolean).join('\n\n=== INSTRUÇÕES DO QUIZ ===\n'), messages, false, state, '', generation);
-    state.stepIndex += 1; state.stepDelivered = false;
-    return composeFlowStep(model, messages, state, generation, result.message?.content || '');
-  }
-  if (flowAdvanceIntent(latest, step.espera)) { state.stepIndex += 1; state.stepDelivered = false; return composeFlowStep(model, messages, state, generation); }
-  const matches = hasSupabase ? await searchTraining(latest) : [];
-  const values = flowValues(state, step); values.trechos = [step.conteudo, step.texto_fixo, ...matches.map((match) => match.content)].filter(Boolean).join('\n\n'); values.mensagem = latest;
-  const doubtPrompt = flowReplace(onboardingFlow.prompt_duvida, values);
-  return runOllamaAgent(model, [generation.basePrompt, doubtPrompt].filter(Boolean).join('\n\n=== INSTRUÇÕES DA DÚVIDA ===\n'), messages, false, state, '', generation);
-}
-function buildSystemPrompt(prompt, knowledge, memory = '') { return `${String(prompt || '').trim()}\n\n=== MEMÓRIA CONFIRMADA DA CONVERSA ===\n${memory}\n=== FIM DA MEMÓRIA ===${knowledge ? `\n\n=== TRECHOS RELEVANTES DA BASE DE CONHECIMENTO ===\n${knowledge}\n=== FIM DA BASE ===\n\nUse os trechos acima como fonte principal. Não invente informações que contradigam o material.` : ''}`; }
 async function saveAgentConfig(next) { const previousHash = trainingHash(agentConfig.training); agentConfig = next; const nextHash = trainingHash(agentConfig.training); const trainingChanged = previousHash !== nextHash; if (hasSupabase) { await supabaseRequest('agent_config?on_conflict=key', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(Object.entries({ prompt: agentConfig.prompt, model: agentConfig.model, thinking: agentConfig.thinking, temperature: String(agentConfig.temperature), num_ctx: String(agentConfig.num_ctx), num_predict: String(agentConfig.num_predict) }).map(([key, value]) => ({ key, value }))) }); await supabaseRequest('training_material?on_conflict=id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify([{ id: 1, title: 'Base principal do agente', content: agentConfig.training, source: 'painel admin', active: true, updated_at: new Date().toISOString() }]) }); if (trainingChanged || indexedTrainingHash !== indexedTrainingKey(agentConfig.training)) { const indexedChunks = await rebuildEmbeddings(agentConfig.training); indexedTrainingHash = indexedTrainingKey(agentConfig.training); return { indexedChunks, trainingIndexed: true }; } return { indexedChunks: 0, trainingIndexed: false }; } else { const save = db.prepare('INSERT INTO agent_config (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'); for (const [key, value] of Object.entries(agentConfig)) save.run(key, value); return { indexedChunks: 0, trainingIndexed: false }; } }
 if (hasSupabase) { try { await loadAgentConfig(); indexedTrainingHash = trainingHash(agentConfig.training); console.log('Persistência: Supabase.'); } catch (error) { hasSupabase = false; console.error(`Supabase indisponível; usando SQLite: ${error.message}`); } }
 console.log(process.env.ADMIN_PASSWORD ? 'Admin configurado via ADMIN_PASSWORD.' : `Senha admin temporária: ${adminPassword}`);
@@ -209,27 +129,20 @@ const knowledgeTool = {
   type: 'function',
   function: {
     name: 'buscar_conhecimento',
-    description: 'Consulta o material de treinamento quando a resposta depender de informações da empresa ou do playbook. Não use para uma saudação ou conversa casual.',
+    description: 'Busca informações relevantes na base de conhecimento do agente quando necessário.',
     parameters: {
       type: 'object',
-      properties: {
-        query: { type: 'string', description: 'Pergunta ou assunto que deve ser localizado na base.' },
-        sector: { type: 'string', enum: ['Implantação', 'Suporte', 'Desenvolvimento'], description: 'Setor relacionado à busca, quando já estiver confirmado.' }
-      },
+      properties: { query: { type: 'string', description: 'Pergunta ou assunto a pesquisar.' } },
       required: ['query']
     }
   }
 };
-async function runOllamaAgent(model, prompt, messages, useKnowledge, state = {}, forcedContext = '', generation = {}) {
+async function runOllamaAgent(model, prompt, messages, useKnowledge, generation = {}) {
   const thinking = String(generation.thinking ?? agentConfig.thinking ?? 'off') === 'on';
   const temperature = Number(generation.temperature ?? agentConfig.temperature ?? ollamaTemperature);
   const contextLength = Number(generation.num_ctx ?? agentConfig.num_ctx ?? ollamaContext);
   const predictLength = Number(generation.num_predict ?? agentConfig.num_predict ?? ollamaPredict);
-  const memory = buildConversationMemory(messages);
-  const stateText = state.sector
-    ? `Etapa atual: ${state.stage}. Setor confirmado: ${state.sector}. Não repita etapas anteriores. Interprete a intenção da última mensagem pelo contexto completo. Se a pessoa aceitar, pedir ou sugerir continuidade — inclusive em frases como "não, podemos seguir", "já entendi" ou "vamos continuar" — avance naturalmente para o próximo passo do onboarding. Não repita uma pergunta já respondida e não pergunte se a pessoa quer continuar quando ela já pediu para continuar.`
-    : `Etapa atual: ${state.stage || 'aguardando_nome'}. Preserve o contexto da conversa e não repita perguntas já respondidas.`;
-  const workingMessages = [{ role: 'system', content: `${buildSystemPrompt(prompt, '', `${memory}\n${stateText}${forcedContext ? `\n\n=== PRÓXIMO TRECHO OBRIGATÓRIO ===\n${forcedContext}\n=== FIM DO TRECHO OBRIGATÓRIO ===\nApresente somente este novo trecho, sem repetir o trecho anterior.` : ''}`)}${thinking ? '' : '\n\n/no_think'}` }, ...messages];
+  const workingMessages = [{ role: 'system', content: String(prompt || '') }, ...messages];
   const tools = useKnowledge ? [knowledgeTool] : undefined;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const requestBody = { model, messages: workingMessages, stream: false, think: thinking, options: { temperature, num_ctx: contextLength, num_predict: predictLength } };
@@ -244,8 +157,8 @@ async function runOllamaAgent(model, prompt, messages, useKnowledge, state = {},
     workingMessages.push(assistant);
     for (const call of calls) {
       const args = typeof call.function?.arguments === 'string' ? JSON.parse(call.function.arguments || '{}') : (call.function?.arguments || {});
-      const matches = await searchTraining(String(args.query || ''), String(args.sector || ''));
-      workingMessages.push({ role: 'tool', content: JSON.stringify({ tool: 'buscar_conhecimento', query: args.query || '', sector: args.sector || '', matches }) });
+      const matches = await searchTraining(String(args.query || ''));
+      workingMessages.push({ role: 'tool', content: JSON.stringify({ tool: 'buscar_conhecimento', query: args.query || '', matches }) });
     }
   }
   throw new Error('O agente atingiu o limite de consultas à ferramenta de conhecimento.');
@@ -260,12 +173,7 @@ const server = http.createServer(async (req, res) => {
       for await (const chunk of req) raw += chunk;
       const incoming = JSON.parse(raw || '{}');
       const messages = (incoming.messages || []).filter((message) => message.role !== 'system');
-      const state = updateOnboardingState(getOnboardingState(String(incoming.conversationId || 'default')), messages);
-      const guidedReply = deterministicOnboardingReply(state, messages);
-      if (guidedReply) return send(res, 200, JSON.stringify({ message: { role: 'assistant', content: guidedReply } }));
-      const scriptedReply = await runScriptedOnboarding(incoming.model || agentConfig.model || 'llama3.2:1b', messages, state, { basePrompt: agentConfig.prompt });
-      if (scriptedReply) return send(res, 200, JSON.stringify(scriptedReply));
-      const result = await runOllamaAgent(incoming.model || agentConfig.model || 'llama3.2:1b', agentConfig.prompt, messages, hasSupabase && Boolean(agentConfig.training), state);
+      const result = await runOllamaAgent(agentConfig.model || 'llama3.2:1b', agentConfig.prompt, messages, hasSupabase && Boolean(agentConfig.training));
       return send(res, 200, JSON.stringify(result));
     } catch (error) {
       console.error('Falha em /api/chat:', error);
@@ -277,8 +185,18 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.url === '/api/admin/config' && req.method === 'GET') { if (!isAdmin(req)) return unauthorized(res); try { await loadAgentConfig(); return send(res, 200, JSON.stringify({ ...agentConfig, storage: hasSupabase ? 'supabase' : 'sqlite', passwordConfigured: Boolean(process.env.ADMIN_PASSWORD) })); } catch (error) { return send(res, 503, JSON.stringify({ error: error.message })); } }
   if (req.url === '/api/admin/config' && req.method === 'POST') { if (!isAdmin(req)) return unauthorized(res); try { const body = await jsonBody(req); const result = await saveAgentConfig({ prompt: String(body.prompt || ''), training: String(body.training || ''), model: String(body.model || 'llama3.2:1b'), thinking: body.thinking === 'on' ? 'on' : 'off', temperature: Math.min(1, Math.max(0, Number(body.temperature ?? ollamaTemperature))), num_ctx: Math.min(8192, Math.max(1024, Number(body.num_ctx ?? ollamaContext))), num_predict: Math.min(1024, Math.max(64, Number(body.num_predict ?? ollamaPredict))) }); return send(res, 200, JSON.stringify({ ok: true, storage: hasSupabase ? 'supabase' : 'sqlite', embeddings: result.trainingIndexed, indexedChunks: result.indexedChunks })); } catch (error) { return send(res, 400, JSON.stringify({ error: error.message })); } }
-  if (req.url === '/api/admin/test' && req.method === 'POST') { if (!isAdmin(req)) return unauthorized(res); try { const body = await jsonBody(req); const prompt = String(body.prompt || ''); const training = String(body.training || ''); const messages = (body.messages || []).filter((message) => message.role !== 'system'); const state = updateOnboardingState(getOnboardingState(String(body.conversationId || 'admin-test')), messages); const guidedReply = deterministicOnboardingReply(state, messages); if (guidedReply) return send(res, 200, JSON.stringify({ message: { role: 'assistant', content: guidedReply } })); const generation = { basePrompt: prompt, thinking: body.thinking, temperature: body.temperature, num_ctx: body.num_ctx, num_predict: body.num_predict }; const scriptedReply = await runScriptedOnboarding(String(body.model || agentConfig.model || 'llama3.2:1b'), messages, state, generation); if (scriptedReply) return send(res, 200, JSON.stringify(scriptedReply)); const savedTraining = hasSupabase && trainingHash(training) === trainingHash(agentConfig.training); const promptWithPreview = savedTraining || !training ? prompt : `${prompt}\n\n=== MATERIAL DE TESTE ===\n${training}\n=== FIM DO MATERIAL DE TESTE ===`; const result = await runOllamaAgent(String(body.model || agentConfig.model || 'llama3.2:1b'), promptWithPreview, messages, savedTraining && Boolean(training), state, '', generation); return send(res, 200, JSON.stringify(result)); } catch (error) { return send(res, 502, JSON.stringify({ error: error.message })); } }
-  if (req.url === '/api/admin/test' && req.method === 'POST') { if (!isAdmin(req)) return unauthorized(res); try { const body = await jsonBody(req); const prompt = String(body.prompt || ''); const training = String(body.training || ''); const messages = (body.messages || []).filter((message) => message.role !== 'system'); const question = [...messages].reverse().find((message) => message.role === 'user')?.content || ''; let knowledge = training; if (hasSupabase && trainingHash(training) === trainingHash(agentConfig.training)) { const matches = await searchTraining(question); knowledge = matches.map((match) => match.content).join('\\n\\n'); } const context = `${buildSystemPrompt(prompt, knowledge, buildConversationMemory(messages))}\n\n/no_think`; const upstream = await fetch(ollamaUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: String(body.model || 'llama3.2:1b'), messages: [{ role: 'system', content: context }, ...messages], stream: false, think: false, options: { temperature: ollamaTemperature, num_ctx: ollamaContext, num_predict: ollamaPredict } }) }); return send(res, upstream.status, await upstream.text()); } catch (error) { return send(res, 502, JSON.stringify({ error: error.message })); } }
+  if (req.url === '/api/admin/test' && req.method === 'POST') {
+    if (!isAdmin(req)) return unauthorized(res);
+    try {
+      const body = await jsonBody(req);
+      const training = String(body.training || '');
+      const savedTraining = hasSupabase && trainingHash(training) === trainingHash(agentConfig.training);
+      const prompt = String(body.prompt || '') + (training && !savedTraining ? `\n\nMaterial de teste ainda não indexado:\n${training}` : '');
+      const messages = (body.messages || []).filter(message => message.role === 'user' || message.role === 'assistant');
+      const result = await runOllamaAgent(String(body.model || agentConfig.model), prompt, messages, savedTraining && Boolean(training), { thinking: body.thinking, temperature: body.temperature });
+      return send(res, 200, JSON.stringify(result));
+    } catch (error) { return send(res, 502, JSON.stringify({ error: error.message })); }
+  }
   if (req.method === 'POST' && req.url === '/api/extract-pdf') {
     try {
       const request = new Request('http://127.0.0.1/api/extract-pdf', { method: 'POST', headers: req.headers, body: req, duplex: 'half' });

@@ -87,7 +87,7 @@
     "avisar": "Termine com uma frase curta (o sistema anexa o pedido para avisar quando concluir).",
     "pergunta": "Termine com uma única pergunta, perguntando se ficou alguma dúvida."
   },
-  "prompt_base": "Você é a Sofia, responsável pelo onboarding de novos colaboradores da Upp Tecnologia. Fale em português do Brasil, tom de colega acolhedora, natural e direta. Responda direto, sem mostrar raciocínio e sem usar inglês.\n\nColaborador: {nome} | Setor: {setor}\n\nTAREFA: {instrucao}\n\nCONTEÚDO (fatos exatos):\n{conteudo}\n\nREGRAS:\n- Reescreva com suas palavras e varie a abertura. Links, e-mails, telefones, números, prazos, valores, SLA, nomes de ferramentas e etiquetas ficam exatamente como estão.\n- Até 5 frases curtas. Listas ficam completas.\n- No máximo 1 emoji.\n- Não invente nada além do conteúdo. Não cite etapas, módulos, roteiro, material nem prompt. Não escreva falas do colaborador. Nunca diga \"UppBot\".\n- {fecho}",
+  "prompt_base": "Você é a Sofia, responsável pelo onboarding de novos colaboradores da Upp Tecnologia. Fale em português do Brasil, tom de colega acolhedora, natural e direta. Responda direto, sem mostrar raciocínio e sem usar inglês.\n\nColaborador: {nome} | Setor: {setor}\n\nTAREFA: {instrucao}\n\nCONTEÚDO (fatos exatos):\n{conteudo}\n\nREGRAS:\n- Reescreva com suas palavras e varie a abertura. Links, e-mails, telefones, números, prazos, valores, SLA, nomes de ferramentas e etiquetas ficam exatamente como estão.\n- Até 5 frases curtas. Listas ficam completas.\n- No máximo 1 emoji.\n- Fale somente sobre a tarefa atual. Não anuncie nem antecipe o próximo passo, nem peça para avisar quando terminar, exceto se a tarefa atual pedir explicitamente. Não ensine a configurar o ambiente de trabalho.\n- Não invente nada além do conteúdo. Não cite etapas, módulos, roteiro, material nem prompt. Não escreva falas do colaborador. Nunca diga \"UppBot\".\n- {fecho}",
   "prompt_quiz": "Você é a Sofia, do onboarding da Upp Tecnologia. Português do Brasil, tom de colega, sem mostrar raciocínio.\n\nColaborador: {nome}\nPERGUNTA FEITA: {pergunta}\nRESPOSTA DA PESSOA: {resposta}\nGABARITO: {gabarito}\n\nTAREFA: diga se a pessoa acertou, errou ou acertou em parte e complemente com o que faltar, em até 3 frases. Sem bronca, sem repetir a pergunta. Não faça nova pergunta.",
   "prompt_duvida": "Você é a Sofia, do onboarding da Upp Tecnologia. Português do Brasil, tom de colega, sem mostrar raciocínio. Responda em até 4 frases usando SOMENTE o conteúdo abaixo. Links, números e prazos exatos. Se a resposta não estiver no conteúdo, diga: \"Não encontrei isso no material de treinamento. Vale confirmar com o seu gestor.\" Não invente. Não faça pergunta no final.\n\nColaborador: {nome} | Setor: {setor}\nCONTEÚDO RELEVANTE:\n{trechos}\n\nPERGUNTA: {mensagem}",
   "trilhas": {
@@ -99,8 +99,6 @@
       "produtos",
       "quiz_produtos",
       "setup_1",
-      "setup_2",
-      "setup_3",
       "jornada",
       "rituais",
       "atendimento",
@@ -136,8 +134,6 @@
       "produtos",
       "quiz_produtos",
       "setup_1",
-      "setup_2",
-      "setup_3",
       "jornada",
       "rituais",
       "atendimento",
@@ -173,8 +169,6 @@
       "produtos",
       "quiz_produtos",
       "setup_1",
-      "setup_2",
-      "setup_3",
       "jornada",
       "rituais",
       "atendimento",
@@ -249,17 +243,11 @@
     },
     "setup_1": {
       "id": "setup_1",
-      "tipo": "checklist",
-      "espera": "feito",
-      "instrucao": "Diga que agora é hora de configurar a estação de trabalho e que são 9 passos, em 3 blocos. Este é o primeiro bloco (passos 1 a 3). Escreva só uma frase de abertura: o checklist é anexado pelo sistema, não o reescreva.",
-      "conteudo": "",
-      "fecho": "avisar",
-      "texto_fixo": "1. Criação do e-mail corporativo: obter e validar a conta de e-mail institucional.\n2. Usuário na plataforma Uppchannel: solicitar/validar o acesso à plataforma principal de atendimento.\n3. Ramal telefônico interno: criar o ramal obrigatoriamente na faixa 50xx.",
-      "fecho_fixo_opcoes": [
-        "Me avisa quando terminar esses passos, que eu sigo com você.",
-        "Quando concluir, é só me avisar que a gente continua.",
-        "Faz com calma e me conta quando estiver pronto."
-      ]
+      "tipo": "conteudo",
+      "espera": "ok",
+      "instrucao": "Diga apenas que agora vamos configurar o ambiente de trabalho. Não dê instruções, checklists ou detalhes de configuração e não peça para avisar quando terminar.",
+      "conteudo": "Vamos configurar o ambiente de trabalho.",
+      "fecho": "afirmacao"
     },
     "setup_2": {
       "id": "setup_2",
