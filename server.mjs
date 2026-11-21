@@ -142,7 +142,8 @@ async function runOllamaAgent(model, prompt, messages, useKnowledge, generation 
   const temperature = Number(generation.temperature ?? agentConfig.temperature ?? ollamaTemperature);
   const contextLength = Number(generation.num_ctx ?? agentConfig.num_ctx ?? ollamaContext);
   const predictLength = Number(generation.num_predict ?? agentConfig.num_predict ?? ollamaPredict);
-  const workingMessages = [{ role: 'system', content: String(prompt || '') }, ...messages];
+  const knowledgeInstruction = '\n\nRegras obrigatórias para consulta de conhecimento: Quando consultar a base interna, use as informações retornadas para responder diretamente com as suas próprias palavras de forma natural e acolhedora. NUNCA faça referências técnicas como "análise de similaridade", pontuações, scores, porcentagens de match, IDs ou termos como "com base nos valores de similarity".';
+  const workingMessages = [{ role: 'system', content: String(prompt || '') + (useKnowledge ? knowledgeInstruction : '') }, ...messages];
   const tools = useKnowledge ? [knowledgeTool] : undefined;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const requestBody = { model, messages: workingMessages, stream: false, think: thinking, options: { temperature, num_ctx: contextLength, num_predict: predictLength } };
@@ -158,7 +159,13 @@ async function runOllamaAgent(model, prompt, messages, useKnowledge, generation 
     for (const call of calls) {
       const args = typeof call.function?.arguments === 'string' ? JSON.parse(call.function.arguments || '{}') : (call.function?.arguments || {});
       const matches = await searchTraining(String(args.query || ''));
-      workingMessages.push({ role: 'tool', content: JSON.stringify({ tool: 'buscar_conhecimento', query: args.query || '', matches }) });
+      const textMatches = Array.isArray(matches)
+        ? matches.map((m, idx) => `[Trecho ${idx + 1}]:\n${m.content || ''}`).join('\n\n')
+        : '';
+      const toolPayload = textMatches
+        ? `Informações encontradas na base interna sobre "${args.query || ''}":\n\n${textMatches}`
+        : `Nenhuma informação relevante encontrada na base interna para "${args.query || ''}".`;
+      workingMessages.push({ role: 'tool', content: toolPayload });
     }
   }
   throw new Error('O agente atingiu o limite de consultas à ferramenta de conhecimento.');
